@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Network Intrusion Detection System</title>
+    <link rel="stylesheet" href="static/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-shield-alt"></i> Network Intrusion Detection System</h1>
+            <div class="status-container">
+                <span id="status-indicator" class="status offline"></span>
+                <span id="status-text">Offline</span>
+            </div>
+        </header>
+        
+        <div class="dashboard">
+            <div class="sidebar">
+                <div class="controls-panel">
+                    <h2>Controls</h2>
+                    <div class="control-group">
+                        <label for="interface-select">Network Interface:</label>
+                        <select id="interface-select">
+                            <option value="">Loading interfaces...</option>
+                        </select>
+                    </div>
+                    <div class="button-group">
+                        <button id="start-btn" class="btn primary"><i class="fas fa-play"></i> Start Monitoring</button>
+                        <button id="stop-btn" class="btn danger" disabled><i class="fas fa-stop"></i> Stop Monitoring</button>
+                    </div>
+                    <hr>
+                    <h3>Model Management</h3>
+                    <div class="model-status">
+                        <div id="model-status-indicator">
+                            <span class="model-status-text">Model Status: </span>
+                            <span id="model-loaded" class="badge">Unknown</span>
+                        </div>
+                        <div class="button-group">
+                            <button id="train-btn" class="btn secondary"><i class="fas fa-cogs"></i> Train Model</button>
+                            <button id="save-model-btn" class="btn secondary" disabled><i class="fas fa-save"></i> Save Model</button>
+                        </div>
+                    </div>
+                    <div class="dataset-upload">
+                        <h3>Dataset</h3>
+                        <input type="file" id="dataset-file" accept=".csv">
+                        <button id="upload-dataset-btn" class="btn secondary"><i class="fas fa-upload"></i> Upload Dataset</button>
+                    </div>
+                </div>
+                
+                <div class="stats-panel">
+                    <h2>Network Statistics</h2>
+                    <div class="stat-group">
+                        <div class="stat-item">
+                            <div class="stat-label">Active Connections</div>
+                            <div id="active-connections" class="stat-value">0</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">Total Packets</div>
+                            <div id="total-packets" class="stat-value">0</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">Total Data</div>
+                            <div id="total-bytes" class="stat-value">0 KB</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">Alerts</div>
+                            <div id="alerts-count" class="stat-value alert-value">0</div>
+                        </div>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="protocol-chart"></canvas>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="main-content">
+                <div class="alerts-panel">
+                    <div class="panel-header">
+                        <h2><i class="fas fa-exclamation-triangle"></i> Security Alerts</h2>
+                        <div class="alert-actions">
+                            <button id="clear-alerts-btn" class="btn small"><i class="fas fa-broom"></i> Clear All</button>
+                            <div class="search-box">
+                                <input type="text" id="alert-search" placeholder="Search alerts...">
+                                <i class="fas fa-search"></i>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="alerts-container">
+                        <table id="alerts-table">
+                            <thead>
+                                <tr>
+                                    <th>Time</th>
+                                    <th>Source</th>
+                                    <th>Destination</th>
+                                    <th>Protocol</th>
+                                    <th>Confidence</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="alerts-body">
+                                <!-- Alert rows will be dynamically added here -->
+                                <tr class="empty-alert">
+                                    <td colspan="6" class="center">No alerts detected yet</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <div class="traffic-panel">
+                    <div class="panel-header">
+                        <h2><i class="fas fa-chart-line"></i> Traffic Analysis</h2>
+                        <div class="time-selector">
+                            <button class="time-btn active" data-time="5">5m</button>
+                            <button class="time-btn" data-time="15">15m</button>
+                            <button class="time-btn" data-time="30">30m</button>
+                            <button class="time-btn" data-time="60">1h</button>
+                        </div>
+                    </div>
+                    
+                    <div class="chart-container large">
+                        <canvas id="traffic-chart"></canvas>
+                    </div>
+                </div>
+                
+                <div class="alert-details-panel" id="alert-details">
+                    <div class="panel-header with-close">
+                        <h2><i class="fas fa-search-plus"></i> Alert Details</h2>
+                        <button id="close-details-btn" class="close-btn"><i class="fas fa-times"></i></button>
+                    </div>
+                    
+                    <div id="detail-content" class="detail-content">
+                        <div class="detail-row">
+                            <span class="detail-label">Timestamp:</span>
+                            <span id="detail-timestamp" class="detail-value">-</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Source:</span>
+                            <span id="detail-source" class="detail-value">-</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Destination:</span>
+                            <span id="detail-destination" class="detail-value">-</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Protocol:</span>
+                            <span id="detail-protocol" class="detail-value">-</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Probability:</span>
+                            <span id="detail-probability" class="detail-value">-</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Connection Key:</span>
+                            <span id="detail-connkey" class="detail-value">-</span>
+                        </div>
+                    </div>
+                    
+                    <div class="detail-actions">
+                        <button id="block-ip-btn" class="btn danger"><i class="fas fa-ban"></i> Block IP</button>
+                        <button id="ignore-alert-btn" class="btn secondary"><i class="fas fa-eye-slash"></i> Ignore Similar</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div id="toast-container" class="toast-container"></div>
+    </div>
+    
+    <script src="static/js/app.js"></script>
+</body>
+</html>

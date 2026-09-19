@@ -1,0 +1,6 @@
+Flask
+Flask-SocketIO
+scapy
+pandas
+numpy
+scikit-learn
